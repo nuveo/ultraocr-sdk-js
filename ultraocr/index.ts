@@ -18,7 +18,8 @@ import {
   CreatedResponse,
   GetJobsResponse,
 } from './types';
-import { readFileSync } from 'fs';
+import { TimeoutError, InvalidStatusCodeError } from './errors';
+import { validateResponse, uploadFile, uploadFileWithPath } from './helpers';
 
 export class Client {
   clientID: string;
@@ -110,12 +111,13 @@ export class Client {
     };
 
     const response = await fetch(url, input);
-    if (response.ok) {
-      const res: TokenResponse = await response.json();
-      this.token = res.token;
-      const now = new Date();
-      this.expiresAt = new Date(now.getTime() + expires * 60 * 1000);
-    }
+    validateResponse(response);
+
+    const res: TokenResponse = await response.json();
+    this.token = res.token;
+
+    const now = new Date();
+    this.expiresAt = new Date(now.getTime() + expires * 60 * 1000);
   }
 
   public async generateSignedUrl(
@@ -126,25 +128,10 @@ export class Client {
   ): Promise<UploadLinkResponse> {
     const url = `${this.baseUrl}/ocr/${resource}/${service}`;
     const response = await this.post(url, metadata, params);
-    if (response.ok) {
-      const res: UploadLinkResponse = await response.json();
-      return res;
-    }
-  }
+    validateResponse(response);
 
-  public async uploadFile(url: string, body: string): Promise<any> {
-    const input = {
-      method: 'PUT',
-      body,
-    };
-
-    const response = await fetch(url, input);
-    return response;
-  }
-
-  public async uploadFileWithPath(url: string, filePath: string): Promise<any> {
-    const file = readFileSync(filePath, 'utf-8');
-    return this.uploadFile(url, file);
+    const res: UploadLinkResponse = await response.json();
+    return res;
   }
 
   public async sendJobSingleStep(
@@ -164,10 +151,10 @@ export class Client {
     if (params && params.extraFile == 'true') body.extra = extraFile;
 
     const response = await this.post(url, body, (params = params));
-    if (response.ok) {
-      const res: CreatedResponse = await response.json();
-      return res;
-    }
+    validateResponse(response);
+
+    const res: CreatedResponse = await response.json();
+    return res;
   }
 
   public async sendJob(
@@ -182,16 +169,16 @@ export class Client {
     const urls = res.urls || {};
 
     const url = urls.document;
-    this.uploadFileWithPath(url, filePath);
+    uploadFileWithPath(url, filePath);
 
     if (params && params.facematch == 'true') {
       const facematchUrl = urls.selfie;
-      this.uploadFileWithPath(facematchUrl, facematchFilePath);
+      uploadFileWithPath(facematchUrl, facematchFilePath);
     }
 
     if (params && params['extra-document'] == 'true') {
       const extraUrl = urls.extra_document;
-      this.uploadFileWithPath(extraUrl, extraFilePath);
+      uploadFileWithPath(extraUrl, extraFilePath);
     }
 
     return {
@@ -210,7 +197,7 @@ export class Client {
     const urls = res.urls || {};
 
     const url = urls.document;
-    this.uploadFileWithPath(url, filePath);
+    uploadFileWithPath(url, filePath);
 
     return {
       id: res.id,
@@ -231,16 +218,16 @@ export class Client {
     const urls = res.urls || {};
 
     const url = urls.document;
-    this.uploadFile(url, file);
+    uploadFile(url, file);
 
     if (params && params.facematch == 'true') {
       const facematchUrl = urls.selfie;
-      this.uploadFile(facematchUrl, facematchFile);
+      uploadFile(facematchUrl, facematchFile);
     }
 
     if (params && params['extra-document'] == 'true') {
       const extraUrl = urls.extra_document;
-      this.uploadFile(extraUrl, extraFile);
+      uploadFile(extraUrl, extraFile);
     }
 
     return {
@@ -260,7 +247,7 @@ export class Client {
     const urls = res.urls || {};
 
     const url = urls.document;
-    this.uploadFile(url, file);
+    uploadFile(url, file);
 
     return {
       id: res.id,
@@ -271,27 +258,27 @@ export class Client {
   public async getBatchStatus(batchID: string): Promise<BatchStatusResponse> {
     const url = `${this.baseUrl}/ocr/batch/status/${batchID}`;
     const response = await this.get(url);
-    if (response.ok) {
-      const res: BatchStatusResponse = await response.json();
-      return res;
-    }
+    validateResponse(response);
+
+    const res: BatchStatusResponse = await response.json();
+    return res;
   }
 
   public async getJobResult(batchID: string, jobID: string): Promise<JobResultResponse> {
     const url = `${this.baseUrl}/ocr/job/result/${batchID}/${jobID}`;
     const response = await this.get(url);
-    if (response.ok) {
-      const res: JobResultResponse = await response.json();
-      return res;
-    }
+    validateResponse(response);
+
+    const res: JobResultResponse = await response.json();
+    return res;
   }
 
   /**
    * Get all created jobs in a time interval.
-   *
    * @param {string} start - The start time (in the format YYYY-MM-DD).
    * @param {string} end - The end time (in the format YYYY-MM-DD).
    * @returns {Promise<JobResultResponse[]>} A promise with the jobs result list.
+   * @throws {InvalidStatusCodeError} If request fail.
    * @example
    * const jobs = await client.getJobs("2024-01-01", "2024-01-02");
    * console.log(jobs);
@@ -316,15 +303,14 @@ export class Client {
     let hasNextPage = true;
     while (hasNextPage) {
       const response = await this.get(url, params);
-      if (response.ok) {
-        const res: GetJobsResponse = await response.json();
+      validateResponse(response);
 
-        jobs = jobs.concat(res.jobs);
-        const token = res.nextPageToken;
+      const res: GetJobsResponse = await response.json();
+      jobs = jobs.concat(res.jobs);
 
-        params.nextPageToken = token;
-        if (!token) hasNextPage = false;
-      }
+      const token = res.nextPageToken;
+      params.nextPageToken = token;
+      if (!token) hasNextPage = false;
     }
 
     return jobs;
@@ -345,7 +331,7 @@ export class Client {
 
         if (new Date() > limit) {
           clearInterval(interval);
-          reject('Timeout');
+          reject(new TimeoutError(this.timeout, res));
         }
       }, this.interval * 1000);
     });
@@ -372,7 +358,7 @@ export class Client {
 
         if (new Date() > limit) {
           clearInterval(i);
-          reject('Timeout');
+          reject(new TimeoutError(this.timeout, res));
         }
       }, this.interval * 1000);
     });
