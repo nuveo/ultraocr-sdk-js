@@ -20,6 +20,7 @@ import {
 } from './types';
 import { TimeoutError, InvalidStatusCodeError } from './errors';
 import { validateResponse, uploadFile, uploadFileWithPath } from './helpers';
+import { METHOD_GET, METHOD_POST } from './constants';
 
 export class Client {
   clientID: string;
@@ -76,11 +77,11 @@ export class Client {
     body: Record<string, any> = {},
     params: Record<string, string> = {},
   ): Promise<any> {
-    return await this.request(endpoint, 'POST', JSON.stringify(body), params);
+    return await this.request(endpoint, METHOD_POST, JSON.stringify(body), params);
   }
 
   private async get(endpoint: string, params: Record<string, string> = {}): Promise<any> {
-    return await this.request(endpoint, 'POST', '', params);
+    return await this.request(endpoint, METHOD_GET, '', params);
   }
 
   private async autoAuthenticate() {
@@ -105,7 +106,7 @@ export class Client {
     };
 
     const input = {
-      method: 'POST',
+      method: METHOD_POST,
       headers,
       body: JSON.stringify(data),
     };

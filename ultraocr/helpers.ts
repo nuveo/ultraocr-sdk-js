@@ -1,5 +1,6 @@
 import { InvalidStatusCodeError } from './errors';
 import { readFileSync } from 'fs';
+import { METHOD_PUT, UTF8 } from './constants';
 
 export function validateResponse(response: Response) {
   if (!response.ok) throw new InvalidStatusCodeError(response.status);
@@ -7,7 +8,7 @@ export function validateResponse(response: Response) {
 
 export async function uploadFile(url: string, body: string): Promise<any> {
   const input = {
-    method: 'PUT',
+    method: METHOD_PUT,
     body,
   };
 
@@ -16,6 +17,6 @@ export async function uploadFile(url: string, body: string): Promise<any> {
 }
 
 export async function uploadFileWithPath(url: string, filePath: string): Promise<any> {
-  const file = readFileSync(filePath, 'utf-8');
+  const file = readFileSync(filePath, UTF8);
   return uploadFile(url, file);
 }

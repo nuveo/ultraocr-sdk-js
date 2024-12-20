@@ -6,3 +6,7 @@ export const BASE_URL = 'https://ultraocr.apis.nuveo.ai/v2';
 export const AUTH_BASE_URL = 'https://auth.apis.nuveo.ai/v2';
 export const STATUS_DONE = 'done';
 export const STATUS_ERROR = 'error';
+export const METHOD_GET = 'GET';
+export const METHOD_POST = 'POST';
+export const METHOD_PUT = 'PUT';
+export const UTF8 = 'utf-8';
