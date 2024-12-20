@@ -1,3 +1,4 @@
+import { clearInterval } from 'timers';
 import {
   POOLING_INTERVAL,
   API_TIMEOUT,
@@ -13,6 +14,9 @@ import {
   UploadLinkResponse,
   JobResultResponse,
   BatchStatusResponse,
+  TokenResponse,
+  CreatedResponse,
+  GetJobsResponse,
 } from './types';
 import { readFileSync } from 'fs';
 
@@ -46,7 +50,7 @@ export class Client {
     method: string,
     body: string,
     params: Record<string, string> = {},
-  ) {
+  ): Promise<any> {
     await this.autoAuthenticate();
 
     const urlParams = new URLSearchParams(params).toString();
@@ -70,11 +74,11 @@ export class Client {
     endpoint: string,
     body: Record<string, any> = {},
     params: Record<string, string> = {},
-  ) {
+  ): Promise<any> {
     return await this.request(endpoint, 'POST', JSON.stringify(body), params);
   }
 
-  private async get(endpoint: string, params: Record<string, string> = {}) {
+  private async get(endpoint: string, params: Record<string, string> = {}): Promise<any> {
     return await this.request(endpoint, 'POST', '', params);
   }
 
@@ -107,7 +111,7 @@ export class Client {
 
     const response = await fetch(url, input);
     if (response.ok) {
-      const res = await response.json();
+      const res: TokenResponse = await response.json();
       this.token = res.token;
       const now = new Date();
       this.expiresAt = new Date(now.getTime() + expires * 60 * 1000);
@@ -121,14 +125,14 @@ export class Client {
     resource: Resource = 'job',
   ): Promise<UploadLinkResponse> {
     const url = `${this.baseUrl}/ocr/${resource}/${service}`;
-    const resp = await this.post(url, metadata, params);
-    if (resp.ok) {
-      const res = await resp.json();
+    const response = await this.post(url, metadata, params);
+    if (response.ok) {
+      const res: UploadLinkResponse = await response.json();
       return res;
     }
   }
 
-  public async uploadFile(url: string, body: string) {
+  public async uploadFile(url: string, body: string): Promise<any> {
     const input = {
       method: 'PUT',
       body,
@@ -138,7 +142,7 @@ export class Client {
     return response;
   }
 
-  public async uploadFileWithPath(url: string, filePath: string) {
+  public async uploadFileWithPath(url: string, filePath: string): Promise<any> {
     const file = readFileSync(filePath, 'utf-8');
     return this.uploadFile(url, file);
   }
@@ -148,20 +152,20 @@ export class Client {
     file: string,
     metadata: Record<string, any> = {},
     params: Record<string, string> = {},
-    facematch_file: string = '',
-    extra_file: string = '',
-  ) {
+    facematchFile: string = '',
+    extraFile: string = '',
+  ): Promise<CreatedResponse> {
     const url = `${this.baseUrl}/ocr/job/send/${service}`;
     const body = {
       metadata: metadata,
       data: file,
     } as any;
-    if (params && params.facematch == 'true') body.facematch = facematch_file;
-    if (params && params.extra_file == 'true') body.extra = extra_file;
+    if (params && params.facematch == 'true') body.facematch = facematchFile;
+    if (params && params.extraFile == 'true') body.extra = extraFile;
 
-    const resp = await this.post(url, body, (params = params));
-    if (resp.ok) {
-      const res = await resp.json();
+    const response = await this.post(url, body, (params = params));
+    if (response.ok) {
+      const res: CreatedResponse = await response.json();
       return res;
     }
   }
@@ -173,7 +177,7 @@ export class Client {
     params: Record<string, string> = {},
     facematchFilePath: string = '',
     extraFilePath: string = '',
-  ) {
+  ): Promise<CreatedResponse> {
     const res = await this.generateSignedUrl(service, metadata, params, 'job');
     const urls = res.urls || {};
 
@@ -181,13 +185,13 @@ export class Client {
     this.uploadFileWithPath(url, filePath);
 
     if (params && params.facematch == 'true') {
-      const facematch_url = urls.selfie;
-      this.uploadFileWithPath(facematch_url, facematchFilePath);
+      const facematchUrl = urls.selfie;
+      this.uploadFileWithPath(facematchUrl, facematchFilePath);
     }
 
     if (params && params['extra-document'] == 'true') {
-      const extra_url = urls.extra_document;
-      this.uploadFileWithPath(extra_url, extraFilePath);
+      const extraUrl = urls.extra_document;
+      this.uploadFileWithPath(extraUrl, extraFilePath);
     }
 
     return {
@@ -201,7 +205,7 @@ export class Client {
     filePath: string,
     metadata: Record<string, any> = {},
     params: Record<string, string> = {},
-  ) {
+  ): Promise<CreatedResponse> {
     const res = await this.generateSignedUrl(service, metadata, params, 'batch');
     const urls = res.urls || {};
 
@@ -221,7 +225,7 @@ export class Client {
     params: Record<string, string> = {},
     facematchFile: string = '',
     extraFile: string = '',
-  ) {
+  ): Promise<CreatedResponse> {
     params.base64 = 'true';
     const res = await this.generateSignedUrl(service, metadata, params, 'job');
     const urls = res.urls || {};
@@ -230,13 +234,13 @@ export class Client {
     this.uploadFile(url, file);
 
     if (params && params.facematch == 'true') {
-      const facematch_url = urls.selfie;
-      this.uploadFile(facematch_url, facematchFile);
+      const facematchUrl = urls.selfie;
+      this.uploadFile(facematchUrl, facematchFile);
     }
 
     if (params && params['extra-document'] == 'true') {
-      const extra_url = urls.extra_document;
-      this.uploadFile(extra_url, extraFile);
+      const extraUrl = urls.extra_document;
+      this.uploadFile(extraUrl, extraFile);
     }
 
     return {
@@ -250,7 +254,7 @@ export class Client {
     file: string,
     metadata: Record<string, any> = {},
     params: Record<string, string> = {},
-  ) {
+  ): Promise<CreatedResponse> {
     params.base64 = 'true';
     const res = await this.generateSignedUrl(service, metadata, params, 'batch');
     const urls = res.urls || {};
@@ -266,59 +270,114 @@ export class Client {
 
   public async getBatchStatus(batchID: string): Promise<BatchStatusResponse> {
     const url = `${this.baseUrl}/ocr/batch/status/${batchID}`;
-    const resp = await this.get(url);
-    if (resp.ok) {
-      const res = await resp.json();
+    const response = await this.get(url);
+    if (response.ok) {
+      const res: BatchStatusResponse = await response.json();
       return res;
     }
   }
 
   public async getJobResult(batchID: string, jobID: string): Promise<JobResultResponse> {
     const url = `${this.baseUrl}/ocr/job/result/${batchID}/${jobID}`;
-    const resp = await this.get(url);
-    if (resp.ok) {
-      const res = await resp.json();
+    const response = await this.get(url);
+    if (response.ok) {
+      const res: JobResultResponse = await response.json();
       return res;
     }
   }
 
-  public async waitForJobDone(batchID: string, jobID: string) {
-    // TODO use setInterval and change error type
-    const now = new Date();
-    const limit = new Date(now.getTime() + this.timeout * 1000);
+  /**
+   * Get all created jobs in a time interval.
+   *
+   * @param {string} start - The start time (in the format YYYY-MM-DD).
+   * @param {string} end - The end time (in the format YYYY-MM-DD).
+   * @returns {Promise<JobResultResponse[]>} A promise with the jobs result list.
+   * @example
+   * const jobs = await client.getJobs("2024-01-01", "2024-01-02");
+   * console.log(jobs);
+   * // Output: [
+   * //         {
+   * //           created_at: "2021-01-01T00:00:00Z",
+   * //           job_ksuid: "21eRubs77luzFr1GdJfHdddH6EA",
+   * //           result: {},
+   * //           service: "chn",
+   * //           status: "done"
+   * //         }
+   * //       ]
+   */
+  public async getJobs(start: string, end: string): Promise<JobResultResponse[]> {
+    const params = {
+      startDate: start,
+      endtDate: end,
+    } as Record<string, string>;
+    const url = `${this.baseUrl}/ocr/job/results`;
 
-    while (new Date() < limit) {
-      const res = await this.getJobResult(batchID, jobID);
+    let jobs = [] as JobResultResponse[];
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await this.get(url, params);
+      if (response.ok) {
+        const res: GetJobsResponse = await response.json();
 
-      if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
-        return res;
+        jobs = jobs.concat(res.jobs);
+        const token = res.nextPageToken;
+
+        params.nextPageToken = token;
+        if (!token) hasNextPage = false;
       }
-
-      setTimeout(() => {}, this.interval * 1000);
     }
 
-    throw Error('Timeout');
+    return jobs;
   }
 
-  public async waitForBatchDone(batchID: string, waitJobs: boolean = true) {
-    // TODO use setInterval and change error type
+  public async waitForJobDone(batchID: string, jobID: string): Promise<JobResultResponse> {
     const now = new Date();
     const limit = new Date(now.getTime() + this.timeout * 1000);
-    let res: BatchStatusResponse;
 
-    while (new Date() < limit) {
-      res = await this.getBatchStatus(batchID);
+    const prom = new Promise<JobResultResponse>((resolve, reject) => {
+      const interval = setInterval(async () => {
+        const res = await this.getJobResult(batchID, jobID);
 
-      if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
-        break;
-      }
+        if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
+          clearInterval(interval);
+          resolve(res);
+        }
 
-      setTimeout(() => {}, this.interval * 1000);
-    }
+        if (new Date() > limit) {
+          clearInterval(interval);
+          reject('Timeout');
+        }
+      }, this.interval * 1000);
+    });
 
-    if (new Date() > limit) {
-      throw Error('Timeout');
-    }
+    const res = await prom;
+    return res;
+  }
+
+  public async waitForBatchDone(
+    batchID: string,
+    waitJobs: boolean = true,
+  ): Promise<BatchStatusResponse> {
+    const now = new Date();
+    const limit = new Date(now.getTime() + this.timeout * 1000);
+
+    const interval = new Promise<BatchStatusResponse>((resolve, reject) => {
+      const i = setInterval(async () => {
+        const res = await this.getBatchStatus(batchID);
+
+        if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
+          clearInterval(i);
+          resolve(res);
+        }
+
+        if (new Date() > limit) {
+          clearInterval(i);
+          reject('Timeout');
+        }
+      }, this.interval * 1000);
+    });
+
+    const res = await interval;
 
     if (waitJobs) {
       res.jobs.forEach(async (job) => {
@@ -327,5 +386,36 @@ export class Client {
     }
 
     return res;
+  }
+
+  public async createAndWaitJob(
+    service: string,
+    filePath: string,
+    metadata: Record<string, any> = {},
+    params: Record<string, string> = {},
+    facematchFilePath: string = '',
+    extraFilePath: string = '',
+  ): Promise<JobResultResponse> {
+    const res = await this.sendJob(
+      service,
+      filePath,
+      metadata,
+      params,
+      facematchFilePath,
+      extraFilePath,
+    );
+    const jobID = res.id;
+    return this.waitForJobDone(jobID, jobID);
+  }
+
+  public async createAndWaitBatch(
+    service: string,
+    filePath: string,
+    metadata: Record<string, any> = {},
+    params: Record<string, string> = {},
+    waitJobs: boolean = true,
+  ): Promise<BatchStatusResponse> {
+    const res = await this.sendBatch(service, filePath, metadata, params);
+    return this.waitForBatchDone(res.id, waitJobs);
   }
 }

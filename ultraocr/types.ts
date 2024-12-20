@@ -11,11 +11,20 @@ export type Config = {
   interval: number;
 };
 
+export type TokenResponse = {
+  token: string;
+};
+
 export type UploadLinkResponse = {
   exp: string;
   id: string;
   status_url: string;
   urls: Record<string, string>;
+};
+
+export type CreatedResponse = {
+  id: string;
+  status_url: string;
 };
 
 export type Result = {
@@ -53,4 +62,9 @@ export type BatchStatusResponse = {
   service: string;
   error?: string;
   jobs: BatchStatusJobs[];
+};
+
+export type GetJobsResponse = {
+  jobs: JobResultResponse[];
+  nextPageToken: string;
 };
