@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "ultraocr/types.ts",
   "scripts": {
-    "test": "jest",
+    "test": "jest --coverage --detectOpenHandles",
     "build": "tsup ultraocr"
   },
   "author": "",
