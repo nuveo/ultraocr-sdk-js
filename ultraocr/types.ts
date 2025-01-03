@@ -1,14 +1,14 @@
 export type Resource = 'job' | 'batch';
 
 export type Config = {
-  clientID: string;
-  clientSecret: string;
-  expires: number;
-  autoRefresh: boolean;
-  authBaseUrl: string;
-  baseUrl: string;
-  timeout: number;
-  interval: number;
+  clientID?: string;
+  clientSecret?: string;
+  expires?: number;
+  autoRefresh?: boolean;
+  authBaseUrl?: string;
+  baseUrl?: string;
+  timeout?: number;
+  interval?: number;
 };
 
 export type TokenResponse = {

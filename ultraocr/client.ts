@@ -40,7 +40,7 @@ export class Client {
    * The client constructor.
    * @param {Config} config - The config specs.
    */
-  constructor(config: Config) {
+  constructor(config: Config = {}) {
     this.clientID = config?.clientID || '';
     this.clientSecret = config?.clientSecret || '';
     this.expires = config?.expires || DEFAULT_EXPIRATION_TIME;
