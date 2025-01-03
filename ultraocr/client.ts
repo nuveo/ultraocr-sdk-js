@@ -71,8 +71,11 @@ export class Client {
     const input = {
       method,
       headers,
-      body: JSON.stringify(body),
-    };
+    } as any;
+
+    if (body) {
+      input.body = body;
+    }
 
     const response = await fetch(url, input);
     return response;
@@ -536,16 +539,21 @@ export class Client {
 
     const prom = new Promise<JobResultResponse>((resolve, reject) => {
       const interval = setInterval(async () => {
-        const res = await this.getJobResult(batchID, jobID);
+        try {
+          const res = await this.getJobResult(batchID, jobID);
 
-        if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
-          clearInterval(interval);
-          resolve(res);
-        }
+          if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
+            clearInterval(interval);
+            resolve(res);
+          }
 
-        if (new Date() > limit) {
+          if (new Date() > limit) {
+            clearInterval(interval);
+            reject(new TimeoutError(this.timeout, res));
+          }
+        } catch (e) {
           clearInterval(interval);
-          reject(new TimeoutError(this.timeout, res));
+          reject(e);
         }
       }, this.interval * 1000);
     });
@@ -589,16 +597,21 @@ export class Client {
 
     const interval = new Promise<BatchStatusResponse>((resolve, reject) => {
       const i = setInterval(async () => {
-        const res = await this.getBatchStatus(batchID);
+        try {
+          const res = await this.getBatchStatus(batchID);
 
-        if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
-          clearInterval(i);
-          resolve(res);
-        }
+          if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
+            clearInterval(i);
+            resolve(res);
+          }
 
-        if (new Date() > limit) {
+          if (new Date() > limit) {
+            clearInterval(i);
+            reject(new TimeoutError(this.timeout, res));
+          }
+        } catch (e) {
           clearInterval(i);
-          reject(new TimeoutError(this.timeout, res));
+          reject(e);
         }
       }, this.interval * 1000);
     });
