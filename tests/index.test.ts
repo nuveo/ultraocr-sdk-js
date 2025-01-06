@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { Client, InvalidStatusCodeError, METHOD_GET, METHOD_POST, TimeoutError } from '../ultraocr';
+import { Client, InvalidStatusCodeError, METHOD_GET, TimeoutError } from '../ultraocr';
 
 describe('constants', () => {
   test('get constants', () => {
