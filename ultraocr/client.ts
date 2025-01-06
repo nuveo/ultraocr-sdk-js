@@ -72,7 +72,7 @@ export class Client {
       ...(body && { body }),
       method,
       headers,
-    } as unknown;
+    };
 
     const response = await fetch(url, input);
     return response;
