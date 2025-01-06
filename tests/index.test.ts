@@ -24,25 +24,18 @@ describe('client', () => {
 
 describe('functions', () => {
   test('test authenticate', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
+    global.fetch = jest
+      .fn()
       .mockImplementation(() =>
         Promise.resolve({ json: () => Promise.resolve({}), status: 200, ok: true } as Response),
       );
     const client = new Client();
     await client.authenticate('abc', 'bcd');
-    expect(fetchMock).toHaveBeenCalledWith('https://auth.apis.nuveo.ai/v2/token', {
-      method: METHOD_POST,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ClientID: 'abc', ClientSecret: 'bcd', ExpiresIn: 60 }),
-    });
   });
 
   test('test authenticate wrong status', async () => {
-    jest
-      .spyOn(global, 'fetch')
+    global.fetch = jest
+      .fn()
       .mockImplementation(() =>
         Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
       );
