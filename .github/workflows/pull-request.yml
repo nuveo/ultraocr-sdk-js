@@ -14,7 +14,9 @@ jobs:
       - name: Config
         run: |
           npm i
-      - name: Run lint and unit tests
+      - name: Run unit tests
         run: |
           npm test
+      - name: Run lint
+        run: |
           npm run lint
