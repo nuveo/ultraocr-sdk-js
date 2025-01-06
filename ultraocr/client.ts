@@ -17,8 +17,9 @@ import {
   TokenResponse,
   CreatedResponse,
   GetJobsResponse,
+  SingleStepInput,
 } from './types';
-import { TimeoutError, InvalidStatusCodeError } from './errors';
+import { TimeoutError, InvalidStatusCodeError } from './errors'; // eslint-disable-line
 import { validateResponse, uploadFile, uploadFileWithPath } from './helpers';
 import { METHOD_GET, METHOD_POST } from './constants';
 
@@ -58,7 +59,7 @@ export class Client {
     method: string,
     body: string,
     params: Record<string, string> = {},
-  ): Promise<any> {
+  ): Promise<Response> {
     await this.autoAuthenticate();
 
     const urlParams = new URLSearchParams(params).toString();
@@ -69,13 +70,10 @@ export class Client {
       Authorization: `Bearer ${this.token}`,
     };
     const input = {
+      ...(body && { body }),
       method,
       headers,
-    } as any;
-
-    if (body) {
-      input.body = body;
-    }
+    } as unknown;
 
     const response = await fetch(url, input);
     return response;
@@ -83,13 +81,13 @@ export class Client {
 
   private async post(
     endpoint: string,
-    body: Record<string, any> = {},
+    body: unknown = {},
     params: Record<string, string> = {},
-  ): Promise<any> {
+  ): Promise<Response> {
     return await this.request(endpoint, METHOD_POST, JSON.stringify(body), params);
   }
 
-  private async get(endpoint: string, params: Record<string, string> = {}): Promise<any> {
+  private async get(endpoint: string, params: Record<string, string> = {}): Promise<Response> {
     return await this.request(endpoint, METHOD_GET, '', params);
   }
 
@@ -164,7 +162,7 @@ export class Client {
    */
   public async generateSignedUrl(
     service: string,
-    metadata: Record<string, any> = {},
+    metadata: unknown = {},
     params: Record<string, string> = {},
     resource: Resource = 'job',
   ): Promise<UploadLinkResponse> {
@@ -198,20 +196,20 @@ export class Client {
   public async sendJobSingleStep(
     service: string,
     file: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
     params: Record<string, string> = {},
     facematchFile: string = '',
     extraFile: string = '',
   ): Promise<CreatedResponse> {
     const url = `${this.baseUrl}/ocr/job/send/${service}`;
     const body = {
-      metadata: metadata,
+      metadata,
       data: file,
-    } as any;
+    } as SingleStepInput;
     if (params && params.facematch == 'true') body.facematch = facematchFile;
     if (params && params.extraFile == 'true') body.extra = extraFile;
 
-    const response = await this.post(url, body, (params = params));
+    const response = await this.post(url, body, params);
     validateResponse(response);
 
     const res: CreatedResponse = await response.json();
@@ -239,7 +237,7 @@ export class Client {
   public async sendJob(
     service: string,
     filePath: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
     params: Record<string, string> = {},
     facematchFilePath: string = '',
     extraFilePath: string = '',
@@ -285,7 +283,7 @@ export class Client {
   public async sendBatch(
     service: string,
     filePath: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown>[] = [],
     params: Record<string, string> = {},
   ): Promise<CreatedResponse> {
     const res = await this.generateSignedUrl(service, metadata, params, 'batch');
@@ -322,7 +320,7 @@ export class Client {
   public async sendJobBase64(
     service: string,
     file: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
     params: Record<string, string> = {},
     facematchFile: string = '',
     extraFile: string = '',
@@ -370,7 +368,7 @@ export class Client {
   public async sendBatchBase64(
     service: string,
     file: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown>[] = [],
     params: Record<string, string> = {},
   ): Promise<CreatedResponse> {
     params.base64 = 'true';
@@ -540,16 +538,16 @@ export class Client {
     const prom = new Promise<JobResultResponse>((resolve, reject) => {
       const interval = setInterval(async () => {
         try {
+          if (new Date() > limit) {
+            clearInterval(interval);
+            reject(new TimeoutError(this.timeout));
+          }
+
           const res = await this.getJobResult(batchID, jobID);
 
           if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
             clearInterval(interval);
             resolve(res);
-          }
-
-          if (new Date() > limit) {
-            clearInterval(interval);
-            reject(new TimeoutError(this.timeout, res));
           }
         } catch (e) {
           clearInterval(interval);
@@ -590,33 +588,33 @@ export class Client {
    */
   public async waitForBatchDone(
     batchID: string,
-    waitJobs: boolean = true,
+    waitJobs: boolean = false,
   ): Promise<BatchStatusResponse> {
     const now = new Date();
     const limit = new Date(now.getTime() + this.timeout * 1000);
 
-    const interval = new Promise<BatchStatusResponse>((resolve, reject) => {
-      const i = setInterval(async () => {
+    const prom = new Promise<BatchStatusResponse>((resolve, reject) => {
+      const interval = setInterval(async () => {
         try {
+          if (new Date() > limit) {
+            clearInterval(interval);
+            reject(new TimeoutError(this.timeout));
+          }
+
           const res = await this.getBatchStatus(batchID);
 
           if ([STATUS_DONE, STATUS_ERROR].includes(res.status)) {
-            clearInterval(i);
+            clearInterval(interval);
             resolve(res);
           }
-
-          if (new Date() > limit) {
-            clearInterval(i);
-            reject(new TimeoutError(this.timeout, res));
-          }
         } catch (e) {
-          clearInterval(i);
+          clearInterval(interval);
           reject(e);
         }
       }, this.interval * 1000);
     });
 
-    const res = await interval;
+    const res = await prom;
 
     if (waitJobs) {
       res.jobs.forEach(async (job) => {
@@ -666,7 +664,7 @@ export class Client {
   public async createAndWaitJob(
     service: string,
     filePath: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
     params: Record<string, string> = {},
     facematchFilePath: string = '',
     extraFilePath: string = '',
@@ -714,7 +712,7 @@ export class Client {
   public async createAndWaitBatch(
     service: string,
     filePath: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown>[] = [],
     params: Record<string, string> = {},
     waitJobs: boolean = true,
   ): Promise<BatchStatusResponse> {
