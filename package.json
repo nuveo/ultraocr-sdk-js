@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "ultraocr/types.ts",
   "scripts": {
-    "test": "jest --coverage --detectOpenHandles",
+    "test": "jest --detectOpenHandles",
+    "lint": "eslint ultraocr",
     "build": "tsup ultraocr"
   },
   "author": "",

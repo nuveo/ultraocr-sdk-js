@@ -28,7 +28,7 @@ export type CreatedResponse = {
 };
 
 export type Result = {
-  Document: any;
+  Document: unknown;
   Quantity: number;
   Time: string;
 };
@@ -43,8 +43,8 @@ export type JobResultResponse = {
   process_time?: string;
   filename?: string;
   validation_status?: string;
-  client_data: any;
-  validation: any;
+  client_data: unknown;
+  validation: unknown;
 };
 
 export type BatchStatusJobs = {
@@ -67,4 +67,11 @@ export type BatchStatusResponse = {
 export type GetJobsResponse = {
   jobs: JobResultResponse[];
   nextPageToken: string;
+};
+
+export type SingleStepInput = {
+  metadata: Record<string, unknown>;
+  data: string;
+  facematch?: string;
+  extra?: string;
 };

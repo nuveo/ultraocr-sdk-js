@@ -1,6 +1,6 @@
 export class TimeoutError extends Error {
-  constructor(timeout: number, lastRes: any) {
-    const msg = `Timeout reached after ${timeout} seconds, last response: ${lastRes}`;
+  constructor(timeout: number) {
+    const msg = `Timeout reached after ${timeout} seconds.`;
     super(msg);
     Object.setPrototypeOf(this, TimeoutError.prototype);
   }

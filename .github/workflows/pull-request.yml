@@ -1,0 +1,22 @@
+name: Validation
+on: [pull_request]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 22
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Config
+        run: |
+          npm i
+      - name: Run unit tests
+        run: |
+          npm test
+      - name: Run lint
+        run: |
+          npm run lint

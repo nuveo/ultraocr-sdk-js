@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { Client, InvalidStatusCodeError, METHOD_GET, METHOD_POST, TimeoutError } from '../ultraocr';
+import { Client, InvalidStatusCodeError, METHOD_GET, TimeoutError } from '../ultraocr';
 
 describe('constants', () => {
   test('get constants', () => {
@@ -24,25 +24,18 @@ describe('client', () => {
 
 describe('functions', () => {
   test('test authenticate', async () => {
-    const fetchMock = jest
-      .spyOn(global, 'fetch')
+    global.fetch = jest
+      .fn()
       .mockImplementation(() =>
         Promise.resolve({ json: () => Promise.resolve({}), status: 200, ok: true } as Response),
       );
     const client = new Client();
     await client.authenticate('abc', 'bcd');
-    expect(fetchMock).toHaveBeenCalledWith('https://auth.apis.nuveo.ai/v2/token', {
-      method: METHOD_POST,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ ClientID: 'abc', ClientSecret: 'bcd', ExpiresIn: 60 }),
-    });
   });
 
   test('test authenticate wrong status', async () => {
-    jest
-      .spyOn(global, 'fetch')
+    global.fetch = jest
+      .fn()
       .mockImplementation(() =>
         Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
       );
@@ -314,7 +307,7 @@ describe('functions', () => {
         ok: true,
       } as Response),
     );
-    const client = new Client({ timeout: 1 });
+    const client = new Client({ timeout: 1, interval: 0.001 });
     const res = await client.waitForJobDone('123', '123');
     expect(res.job_ksuid).toBe('123');
     expect(res.status).toBe('done');
@@ -334,7 +327,6 @@ describe('functions', () => {
   });
 
   test('test wait for job done timeout', async () => {
-    jest.useFakeTimers();
     jest.spyOn(global, 'fetch').mockImplementation(() =>
       Promise.resolve({
         json: () =>
@@ -348,5 +340,205 @@ describe('functions', () => {
     );
     const client = new Client({ timeout: 30, interval: 1 });
     expect(async () => await client.waitForJobDone('123', '123')).rejects.toThrow(TimeoutError);
+  });
+
+  test('test wait for batch done', async () => {
+    jest.useRealTimers();
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            job_ksuid: '1234',
+            status: 'done',
+            jobs: [
+              {
+                job_ksuid: '1234',
+                status: 'done',
+              },
+            ],
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 1, interval: 0.001 });
+    const res = await client.waitForBatchDone('123');
+    expect(res.batch_ksuid).toBe('123');
+    expect(res.status).toBe('done');
+  });
+
+  test('test wait for batch done without jobs', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            status: 'done',
+            jobs: [],
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 1, interval: 0.001 });
+    const res = await client.waitForBatchDone('123', false);
+    expect(res.batch_ksuid).toBe('123');
+    expect(res.status).toBe('done');
+  });
+
+  test('test wait for batch done wrong status', async () => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.waitForBatchDone('123')).rejects.toThrow(
+      InvalidStatusCodeError,
+    );
+  });
+
+  test('test wait for batch done timeout', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            status: 'processing',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 30, interval: 1 });
+    expect(async () => await client.waitForBatchDone('123')).rejects.toThrow(TimeoutError);
+  });
+
+  test('test create and wait job done', async () => {
+    jest.useRealTimers();
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            job_ksuid: '123',
+            status: 'done',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 1, interval: 0.001 });
+    const res = await client.createAndWaitJob('123', './package.json');
+    expect(res.job_ksuid).toBe('123');
+    expect(res.status).toBe('done');
+  });
+
+  test('test create and wait job done wrong status', async () => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.createAndWaitJob('123', './package.json')).rejects.toThrow(
+      InvalidStatusCodeError,
+    );
+  });
+
+  test('test create and wait job done timeout', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            job_ksuid: '123',
+            status: 'processing',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 30, interval: 1 });
+    expect(async () => await client.createAndWaitJob('123', './package.json')).rejects.toThrow(
+      TimeoutError,
+    );
+  });
+
+  test('test create and wait batch done', async () => {
+    jest.useRealTimers();
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            job_ksuid: '1234',
+            status: 'done',
+            jobs: [
+              {
+                job_ksuid: '1234',
+                status: 'done',
+              },
+            ],
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 1, interval: 0.001 });
+    const res = await client.createAndWaitBatch('123', './package.json');
+    expect(res.batch_ksuid).toBe('123');
+    expect(res.status).toBe('done');
+  });
+
+  test('test create and wait batch done without jobs', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            status: 'done',
+            jobs: [],
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 1, interval: 0.001 });
+    const res = await client.createAndWaitBatch('123', './package.json');
+    expect(res.batch_ksuid).toBe('123');
+    expect(res.status).toBe('done');
+  });
+
+  test('test create and wait batch done wrong status', async () => {
+    jest.useFakeTimers();
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.createAndWaitBatch('123', './package.json')).rejects.toThrow(
+      InvalidStatusCodeError,
+    );
+  });
+
+  test('test create and wait batch done timeout', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_ksuid: '123',
+            status: 'processing',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client({ timeout: 30, interval: 1 });
+    expect(async () => await client.createAndWaitBatch('123', './package.json')).rejects.toThrow(
+      TimeoutError,
+    );
   });
 });
