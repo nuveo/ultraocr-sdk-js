@@ -18,5 +18,3 @@ export const METHOD_GET = 'GET';
 export const METHOD_POST = 'POST';
 /** @const {string} METHOD_PUT - The HTTP PUT method */
 export const METHOD_PUT = 'PUT';
-/** @const {string} UTF8 - The UTF-8 encoding */
-export const UTF8 = 'utf-8';
