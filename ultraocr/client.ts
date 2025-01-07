@@ -56,7 +56,7 @@ export class Client {
   private async request(
     endpoint: string,
     method: string,
-    body: string,
+    body: unknown,
     params: Record<string, string> = {},
   ): Promise<Response> {
     await this.autoAuthenticate();
@@ -69,7 +69,7 @@ export class Client {
       Authorization: `Bearer ${this.token}`,
     };
     const input = {
-      ...(body && { body }),
+      ...(body && { body: JSON.stringify(body) }),
       method,
       headers,
     };
@@ -83,7 +83,7 @@ export class Client {
     body: unknown = null,
     params: Record<string, string> = {},
   ): Promise<Response> {
-    return await this.request(endpoint, METHOD_POST, body ? JSON.stringify(body) : '', params);
+    return await this.request(endpoint, METHOD_POST, body, params);
   }
 
   private async get(endpoint: string, params: Record<string, string> = {}): Promise<Response> {
@@ -287,7 +287,7 @@ export class Client {
   ): Promise<CreatedResponse> {
     const res = await this.generateSignedUrl(
       service,
-      metadata.length === 0 ? null : metadata,
+      metadata.length ? metadata : null,
       params,
       'batch',
     );
