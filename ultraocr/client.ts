@@ -91,7 +91,7 @@ export class Client {
   }
 
   private async autoAuthenticate() {
-    if (this.autoRefresh && new Date() > this.expiresAt)
+    if (this.autoRefresh && new Date() >= this.expiresAt)
       await this.authenticate(this.clientID, this.clientSecret, this.expires);
   }
 
