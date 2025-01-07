@@ -127,7 +127,7 @@ Alternatively, you can request the signed url directly, without any utility, but
 const res = await client.generateSignedUrl('SERVICE'); // Request job
 const urls = urls.document;
 const url = urls.document;
-const file = readFileSync(filePath, UTF8);
+const file = readFileSync(filePath);
 
 await fetch(url, {
   method: 'PUT',
@@ -137,7 +137,7 @@ await fetch(url, {
 const res = client.generateSignedUrl('SERVICE', {}, [], 'batch'); // Request batch
 const urls = urls.document;
 const url = urls.document;
-const file = readFileSync(filePath, UTF8);
+const file = readFileSync(filePath);
 
 await fetch(url, {
   method: 'PUT',
