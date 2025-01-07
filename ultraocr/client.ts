@@ -80,10 +80,10 @@ export class Client {
 
   private async post(
     endpoint: string,
-    body: unknown = {},
+    body: unknown = null,
     params: Record<string, string> = {},
   ): Promise<Response> {
-    return await this.request(endpoint, METHOD_POST, JSON.stringify(body), params);
+    return await this.request(endpoint, METHOD_POST, body ? JSON.stringify(body) : '', params);
   }
 
   private async get(endpoint: string, params: Record<string, string> = {}): Promise<Response> {
@@ -161,7 +161,7 @@ export class Client {
    */
   public async generateSignedUrl(
     service: string,
-    metadata: unknown = {},
+    metadata: unknown = null,
     params: Record<string, string> = {},
     resource: Resource = 'job',
   ): Promise<UploadLinkResponse> {
@@ -285,7 +285,12 @@ export class Client {
     metadata: Record<string, unknown>[] = [],
     params: Record<string, string> = {},
   ): Promise<CreatedResponse> {
-    const res = await this.generateSignedUrl(service, metadata, params, 'batch');
+    const res = await this.generateSignedUrl(
+      service,
+      metadata.length === 0 ? null : metadata,
+      params,
+      'batch',
+    );
     const urls = res.urls || {};
 
     const url = urls.document;
