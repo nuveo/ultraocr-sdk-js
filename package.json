@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "UltraOCR SDK for JavaScript",
   "main": "dist/index.js",
-  "types": "ultraocr/types.ts",
+  "types": "ultraocr/index.ts",
   "scripts": {
     "test": "jest --detectOpenHandles",
     "lint": "eslint ultraocr",
