@@ -6,6 +6,10 @@ import {
   DEFAULT_EXPIRATION_TIME,
   STATUS_DONE,
   STATUS_ERROR,
+  METHOD_GET,
+  METHOD_POST,
+  KEY_EXTRA,
+  FLAG_TRUE,
 } from './constants';
 import {
   Resource,
@@ -20,7 +24,6 @@ import {
 } from './types';
 import { TimeoutError, InvalidStatusCodeError } from './errors'; // eslint-disable-line
 import { validateResponse, uploadFile, uploadFileWithPath } from './helpers';
-import { METHOD_GET, METHOD_POST } from './constants';
 
 // Client to help on UltraOCR usage. For more details about all arguments and returns,
 // access the oficial system documentation on https://docs.nuveo.ai/ocr/v2/.
@@ -205,8 +208,8 @@ export class Client {
       metadata,
       data: file,
     } as SingleStepInput;
-    if (params && params.facematch == 'true') body.facematch = facematchFile;
-    if (params && params.extraFile == 'true') body.extra = extraFile;
+    if (params && params.facematch == FLAG_TRUE) body.facematch = facematchFile;
+    if (params && params.extraFile == FLAG_TRUE) body.extra = extraFile;
 
     const response = await this.post(url, body, params);
     validateResponse(response);
@@ -247,12 +250,12 @@ export class Client {
     const url = urls.document;
     uploadFileWithPath(url, filePath);
 
-    if (params && params.facematch == 'true') {
+    if (params && params.facematch == FLAG_TRUE) {
       const facematchUrl = urls.selfie;
       uploadFileWithPath(facematchUrl, facematchFilePath);
     }
 
-    if (params && params['extra-document'] == 'true') {
+    if (params && params[KEY_EXTRA] == FLAG_TRUE) {
       const extraUrl = urls.extra_document;
       uploadFileWithPath(extraUrl, extraFilePath);
     }
@@ -287,7 +290,7 @@ export class Client {
   ): Promise<CreatedResponse> {
     const res = await this.generateSignedUrl(
       service,
-      metadata.length ? metadata : null,
+      metadata?.length ? metadata : null,
       params,
       'batch',
     );
@@ -329,19 +332,19 @@ export class Client {
     facematchFile: string = '',
     extraFile: string = '',
   ): Promise<CreatedResponse> {
-    params.base64 = 'true';
+    params.base64 = FLAG_TRUE;
     const res = await this.generateSignedUrl(service, metadata, params, 'job');
     const urls = res.urls || {};
 
     const url = urls.document;
     uploadFile(url, file);
 
-    if (params && params.facematch == 'true') {
+    if (params && params.facematch == FLAG_TRUE) {
       const facematchUrl = urls.selfie;
       uploadFile(facematchUrl, facematchFile);
     }
 
-    if (params && params['extra-document'] == 'true') {
+    if (params && params[KEY_EXTRA] == FLAG_TRUE) {
       const extraUrl = urls.extra_document;
       uploadFile(extraUrl, extraFile);
     }
@@ -375,7 +378,7 @@ export class Client {
     metadata: Record<string, unknown>[] = [],
     params: Record<string, string> = {},
   ): Promise<CreatedResponse> {
-    params.base64 = 'true';
+    params.base64 = FLAG_TRUE;
     const res = await this.generateSignedUrl(service, metadata, params, 'batch');
     const urls = res.urls || {};
 

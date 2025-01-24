@@ -18,3 +18,7 @@ export const METHOD_GET = 'GET';
 export const METHOD_POST = 'POST';
 /** @const {string} METHOD_PUT - The HTTP PUT method */
 export const METHOD_PUT = 'PUT';
+/** @const {string} KEY_EXTRA - The extra key */
+export const KEY_EXTRA = 'extra-document';
+/** @const {string} FLAG_TRUE - The true flag */
+export const FLAG_TRUE = 'true';
