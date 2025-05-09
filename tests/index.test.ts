@@ -541,4 +541,112 @@ describe('functions', () => {
       TimeoutError,
     );
   });
+
+  test('test get job info', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            job_id: '123',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client();
+    const res = await client.getJobInfo('123');
+    expect(res.job_id).toBe('123');
+  });
+
+  test('test get job info wrong status', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.getJobInfo('123')).rejects.toThrow(InvalidStatusCodeError);
+  });
+
+  test('test get batch info', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            batch_id: '123',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client();
+    const res = await client.getBatchInfo('123');
+    expect(res.batch_id).toBe('123');
+  });
+
+  test('test get batch info wrong status', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.getBatchInfo('123')).rejects.toThrow(InvalidStatusCodeError);
+  });
+
+  test('test get batch result storage', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve({
+            exp: '60000',
+          }),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client();
+    const res = await client.getBatchResultStorage('123');
+    expect(res.exp).toBe('60000');
+  });
+
+  test('test get batch result storage wrong status', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.getBatchResultStorage('123')).rejects.toThrow(
+      InvalidStatusCodeError,
+    );
+  });
+
+  test('test get batch result', async () => {
+    jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.resolve({
+        json: () =>
+          Promise.resolve([
+            {
+              job_ksuid: '123',
+            },
+          ]),
+        status: 200,
+        ok: true,
+      } as Response),
+    );
+    const client = new Client();
+    const res = await client.getBatchResult('123');
+    expect(res.length).toBe(1);
+  });
+
+  test('test get batch result wrong status', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockImplementation(() =>
+        Promise.resolve({ json: () => Promise.resolve({}), status: 403 } as Response),
+      );
+    const client = new Client();
+    expect(async () => await client.getBatchResult('123')).rejects.toThrow(InvalidStatusCodeError);
+  });
 });

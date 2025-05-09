@@ -22,3 +22,7 @@ export const METHOD_PUT = 'PUT';
 export const KEY_EXTRA = 'extra-document';
 /** @const {string} FLAG_TRUE - The true flag */
 export const FLAG_TRUE = 'true';
+/** @const {string} RETURN_REQUEST - The batch result request return method */
+export const RETURN_REQUEST = 'request';
+/** @const {string} RETURN_STORAGE - The batch result storage return method */
+export const RETURN_STORAGE = 'storage';

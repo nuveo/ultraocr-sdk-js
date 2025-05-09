@@ -10,6 +10,8 @@ import {
   METHOD_POST,
   KEY_EXTRA,
   FLAG_TRUE,
+  RETURN_REQUEST,
+  RETURN_STORAGE,
 } from './constants';
 import {
   Resource,
@@ -21,6 +23,10 @@ import {
   CreatedResponse,
   GetJobsResponse,
   SingleStepInput,
+  JobInfoResponse,
+  BatchInfoResponse,
+  BatchResultJob,
+  BatchResultStorageResponse,
 } from './types';
 import { TimeoutError, InvalidStatusCodeError } from './errors'; // eslint-disable-line
 import { validateResponse, uploadFile, uploadFileWithPath } from './helpers';
@@ -96,6 +102,17 @@ export class Client {
   private async autoAuthenticate() {
     if (this.autoRefresh && new Date() >= this.expiresAt)
       await this.authenticate(this.clientID, this.clientSecret, this.expires);
+  }
+
+  private async getBatchResultBase(
+    batchID: string,
+    params: Record<string, string> = {},
+  ): Promise<Response> {
+    const url = `${this.baseUrl}/ocr/batch/result/${batchID}`;
+    const response = await this.get(url, params);
+    validateResponse(response);
+
+    return response;
   }
 
   /**
@@ -725,5 +742,144 @@ export class Client {
   ): Promise<BatchStatusResponse> {
     const res = await this.sendBatch(service, filePath, metadata, params);
     return this.waitForBatchDone(res.id, waitJobs);
+  }
+  /**
+   * Get the job info with more details.
+   * @param {string} jobID - The id of the job, given on job creation.
+   * @returns {Promise<JobInfoResponse>} A promise with the job info.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const job = await client.getJobInfo("ID");
+   * console.log(job);
+   * // Output: {
+   * //           "client_data": { },
+   * //           "metadata": { },
+   * //           "created_at": "2022-06-22T20:58:09Z",
+   * //           "company_id": "123",
+   * //           "client_id": "1234",
+   * //           "job_id": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //           "source": "API",
+   * //           "result": {
+   * //             "Time": "7.45",
+   * //               "Document": [
+   * //                 {
+   * //                   "Page": 1,
+   * //                   "Data": {
+   * //                     "DocumentType": {
+   * //                       "conf": 99,
+   * //                       "value": "CNH"
+   * //                     }
+   * //                   }
+   * //                 }
+   * //               ]
+   * //           },
+   * //           "service": "idtypification",
+   * //           "status": "done"
+   * //         }
+   */
+  public async getJobInfo(jobID: string): Promise<JobInfoResponse> {
+    const url = `${this.baseUrl}/ocr/job/info/${jobID}`;
+    const response = await this.get(url);
+    validateResponse(response);
+
+    const res: JobInfoResponse = await response.json();
+    return res;
+  }
+
+  /**
+   * Get the info of the batch with more details, checking whether it was processed or not.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @returns {Promise<BatchInfoResponse>} A promise with the batch info.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchInfo("ID");
+   * console.log(batch);
+   * // Output: {
+   * //           "created_at": "2022-06-22T20:58:09Z",
+   * //           "company_id": "123",
+   * //           "client_id": "1234",
+   * //           "batch_id": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //           "source": "API",
+   * //           "service": "idtypification",
+   * //           "status": "done",
+   * //           "total_jobs": 3,
+   * //           "total_processed": 2
+   * //         }
+   */
+  public async getBatchInfo(batchID: string): Promise<BatchInfoResponse> {
+    const url = `${this.baseUrl}/ocr/batch/info/${batchID}`;
+    const response = await this.get(url);
+    validateResponse(response);
+
+    const res: BatchInfoResponse = await response.json();
+    return res;
+  }
+
+  /**
+   * Get the batch jobs results as array.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @returns {Promise<BatchResultJob[]>} A promise with the batch jobs results.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchResult("ID");
+   * console.log(batch);
+   * // Output: [
+   * //           {
+   * //             "client_data": {},
+   * //             "created_at": "2022-06-22T20:58:09Z",
+   * //             "job_ksuid": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //             "result": {
+   * //               "Time": "7.45",
+   * //               "Document": [
+   * //                 {
+   * //                   "Page": 1,
+   * //                   "Data": {
+   * //                     "DocumentType": {
+   * //                       "conf": 99,
+   * //                       "value": "CNH"
+   * //                     }
+   * //                   }
+   * //                 }
+   * //               ]
+   * //             },
+   * //             "service": "idtypification",
+   * //             "status": "done",
+   * //             "filename": "123.jpg"
+   * //           }
+   * //         ]
+   */
+  public async getBatchResult(batchID: string): Promise<BatchResultJob[]> {
+    const params = {
+      return: RETURN_REQUEST,
+    };
+    const response = await this.getBatchResultBase(batchID, params);
+
+    const res: BatchResultJob[] = await response.json();
+    return res;
+  }
+
+  /**
+   * Generate url to download a file containing the batch jobs results.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @param {Record<string, string>} params - The query parameters based on UltraOCR Docs.
+   * @returns {Promise<BatchResultStorageResponse>} A promise with url to download result file.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchResultStorage("ID");
+   * console.log(batch);
+   * // Output: {
+   * //           "exp": "60000",
+   * //           "url": "https://presignedurldemo.s3.eu-west-2.amazonaws.com/image.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJJWZ7B6WCRGMKFGQ%2F20180210%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20180210T171315Z&X-Amz-Expires=1800&X-Amz-Signature=12b74b0788aa036bc7c3d03b3f20c61f1f91cc9ad8873e3314255dc479a25351&X-Amz-SignedHeaders=host"
+   * //         }
+   */
+  public async getBatchResultStorage(
+    batchID: string,
+    params: Record<string, string> = {},
+  ): Promise<BatchResultStorageResponse> {
+    params.return = RETURN_STORAGE;
+    const response = await this.getBatchResultBase(batchID, params);
+
+    const res: BatchResultStorageResponse = await response.json();
+    return res;
   }
 }
