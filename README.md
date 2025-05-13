@@ -168,6 +168,12 @@ With the job or batch id, you can get the job result or batch status with:
 const res = await client.getBatchStatus('BATCH_ID'); // Batches
 const res = await client.getJobResult('JOB_ID', 'JOB_ID'); // Simple jobs
 const res = await client.getJobResult('BATCH_ID', 'JOB_ID'); // Jobs belonging to batches
+const res = await client.getBatchResult('BATCH_ID'); // Get batch jobs result as array
+const res = await client.getBatchResultStorage('BATCH_ID', params); // Get batch jobs result in a file
+
+// More details about job and batch
+const res = await client.getBatchInfo('BATCH_ID'); // Batches info (without jobs info)
+const res = await client.getJobInfo('JOB_ID'); // Jobs info (single jobs only)
 ```
 
 Alternatively, you can use a utily `waitForJobDone` or `waitForBatchDone`:

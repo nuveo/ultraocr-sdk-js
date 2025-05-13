@@ -47,6 +47,57 @@ export type JobResultResponse = {
   validation: unknown;
 };
 
+export type JobInfoResponse = {
+  result?: Result;
+  job_id: string;
+  client_id: string;
+  company_id: string;
+  source: string;
+  created_at: string;
+  finished_at?: string;
+  service: string;
+  status: string;
+  error?: string;
+  validation_status?: string;
+  validation_id?: string;
+  client_data?: unknown;
+  metadata?: unknown;
+  validation?: unknown;
+};
+
+export type BatchInfoResponse = {
+  batch_id: string;
+  client_id: string;
+  company_id: string;
+  source: string;
+  created_at: string;
+  service: string;
+  status: string;
+  error?: string;
+  filename?: string;
+  validation_id?: string;
+  total_jobs?: number;
+  total_processed?: number;
+};
+
+export type BatchResultJob = {
+  result?: Result;
+  job_ksuid: string;
+  created_at: string;
+  service: string;
+  status: string;
+  error?: string;
+  filename?: string;
+  validation_status?: string;
+  client_data?: unknown;
+  validation?: unknown;
+};
+
+export type BatchResultStorageResponse = {
+  exp: string;
+  url: string;
+};
+
 export type BatchStatusJobs = {
   job_ksuid: string;
   created_at: string;
