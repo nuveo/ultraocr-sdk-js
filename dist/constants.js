@@ -23,10 +23,14 @@ __export(constants_exports, {
   AUTH_BASE_URL: () => AUTH_BASE_URL,
   BASE_URL: () => BASE_URL,
   DEFAULT_EXPIRATION_TIME: () => DEFAULT_EXPIRATION_TIME,
+  FLAG_TRUE: () => FLAG_TRUE,
+  KEY_EXTRA: () => KEY_EXTRA,
   METHOD_GET: () => METHOD_GET,
   METHOD_POST: () => METHOD_POST,
   METHOD_PUT: () => METHOD_PUT,
   POOLING_INTERVAL: () => POOLING_INTERVAL,
+  RETURN_REQUEST: () => RETURN_REQUEST,
+  RETURN_STORAGE: () => RETURN_STORAGE,
   STATUS_DONE: () => STATUS_DONE,
   STATUS_ERROR: () => STATUS_ERROR
 });
@@ -41,16 +45,24 @@ var STATUS_ERROR = "error";
 var METHOD_GET = "GET";
 var METHOD_POST = "POST";
 var METHOD_PUT = "PUT";
+var KEY_EXTRA = "extra-document";
+var FLAG_TRUE = "true";
+var RETURN_REQUEST = "request";
+var RETURN_STORAGE = "storage";
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   API_TIMEOUT,
   AUTH_BASE_URL,
   BASE_URL,
   DEFAULT_EXPIRATION_TIME,
+  FLAG_TRUE,
+  KEY_EXTRA,
   METHOD_GET,
   METHOD_POST,
   METHOD_PUT,
   POOLING_INTERVAL,
+  RETURN_REQUEST,
+  RETURN_STORAGE,
   STATUS_DONE,
   STATUS_ERROR
 });

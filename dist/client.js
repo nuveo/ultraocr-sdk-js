@@ -34,6 +34,10 @@ var STATUS_ERROR = "error";
 var METHOD_GET = "GET";
 var METHOD_POST = "POST";
 var METHOD_PUT = "PUT";
+var KEY_EXTRA = "extra-document";
+var FLAG_TRUE = "true";
+var RETURN_REQUEST = "request";
+var RETURN_STORAGE = "storage";
 
 // ultraocr/errors.ts
 var TimeoutError = class _TimeoutError extends Error {
@@ -123,6 +127,12 @@ var Client = class {
     if (this.autoRefresh && /* @__PURE__ */ new Date() >= this.expiresAt)
       await this.authenticate(this.clientID, this.clientSecret, this.expires);
   }
+  async getBatchResultBase(batchID, params = {}) {
+    const url = `${this.baseUrl}/ocr/batch/result/${batchID}`;
+    const response = await this.get(url, params);
+    validateResponse(response);
+    return response;
+  }
   /**
    * Authenticate on UltraOCR and save the token to use on future requests.
    * @param {string} clientID - The Client ID generated on Web Interface.
@@ -209,8 +219,8 @@ var Client = class {
       metadata,
       data: file
     };
-    if (params && params.facematch == "true") body.facematch = facematchFile;
-    if (params && params.extraFile == "true") body.extra = extraFile;
+    if (params && params.facematch == FLAG_TRUE) body.facematch = facematchFile;
+    if (params && params.extraFile == FLAG_TRUE) body.extra = extraFile;
     const response = await this.post(url, body, params);
     validateResponse(response);
     const res = await response.json();
@@ -239,11 +249,11 @@ var Client = class {
     const urls = res.urls || {};
     const url = urls.document;
     uploadFileWithPath(url, filePath);
-    if (params && params.facematch == "true") {
+    if (params && params.facematch == FLAG_TRUE) {
       const facematchUrl = urls.selfie;
       uploadFileWithPath(facematchUrl, facematchFilePath);
     }
-    if (params && params["extra-document"] == "true") {
+    if (params && params[KEY_EXTRA] == FLAG_TRUE) {
       const extraUrl = urls.extra_document;
       uploadFileWithPath(extraUrl, extraFilePath);
     }
@@ -271,7 +281,7 @@ var Client = class {
   async sendBatch(service, filePath, metadata = [], params = {}) {
     const res = await this.generateSignedUrl(
       service,
-      metadata.length ? metadata : null,
+      metadata?.length ? metadata : null,
       params,
       "batch"
     );
@@ -303,16 +313,16 @@ var Client = class {
    * //         }
    */
   async sendJobBase64(service, file, metadata = {}, params = {}, facematchFile = "", extraFile = "") {
-    params.base64 = "true";
+    params.base64 = FLAG_TRUE;
     const res = await this.generateSignedUrl(service, metadata, params, "job");
     const urls = res.urls || {};
     const url = urls.document;
     uploadFile(url, file);
-    if (params && params.facematch == "true") {
+    if (params && params.facematch == FLAG_TRUE) {
       const facematchUrl = urls.selfie;
       uploadFile(facematchUrl, facematchFile);
     }
-    if (params && params["extra-document"] == "true") {
+    if (params && params[KEY_EXTRA] == FLAG_TRUE) {
       const extraUrl = urls.extra_document;
       uploadFile(extraUrl, extraFile);
     }
@@ -339,7 +349,7 @@ var Client = class {
    * //         }
    */
   async sendBatchBase64(service, file, metadata = [], params = {}) {
-    params.base64 = "true";
+    params.base64 = FLAG_TRUE;
     const res = await this.generateSignedUrl(service, metadata, params, "batch");
     const urls = res.urls || {};
     const url = urls.document;
@@ -645,6 +655,135 @@ var Client = class {
   async createAndWaitBatch(service, filePath, metadata = [], params = {}, waitJobs = true) {
     const res = await this.sendBatch(service, filePath, metadata, params);
     return this.waitForBatchDone(res.id, waitJobs);
+  }
+  /**
+   * Get the job info with more details.
+   * @param {string} jobID - The id of the job, given on job creation.
+   * @returns {Promise<JobInfoResponse>} A promise with the job info.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const job = await client.getJobInfo("ID");
+   * console.log(job);
+   * // Output: {
+   * //           "client_data": { },
+   * //           "metadata": { },
+   * //           "created_at": "2022-06-22T20:58:09Z",
+   * //           "company_id": "123",
+   * //           "client_id": "1234",
+   * //           "job_id": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //           "source": "API",
+   * //           "result": {
+   * //             "Time": "7.45",
+   * //               "Document": [
+   * //                 {
+   * //                   "Page": 1,
+   * //                   "Data": {
+   * //                     "DocumentType": {
+   * //                       "conf": 99,
+   * //                       "value": "CNH"
+   * //                     }
+   * //                   }
+   * //                 }
+   * //               ]
+   * //           },
+   * //           "service": "idtypification",
+   * //           "status": "done"
+   * //         }
+   */
+  async getJobInfo(jobID) {
+    const url = `${this.baseUrl}/ocr/job/info/${jobID}`;
+    const response = await this.get(url);
+    validateResponse(response);
+    const res = await response.json();
+    return res;
+  }
+  /**
+   * Get the info of the batch with more details, checking whether it was processed or not.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @returns {Promise<BatchInfoResponse>} A promise with the batch info.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchInfo("ID");
+   * console.log(batch);
+   * // Output: {
+   * //           "created_at": "2022-06-22T20:58:09Z",
+   * //           "company_id": "123",
+   * //           "client_id": "1234",
+   * //           "batch_id": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //           "source": "API",
+   * //           "service": "idtypification",
+   * //           "status": "done",
+   * //           "total_jobs": 3,
+   * //           "total_processed": 2
+   * //         }
+   */
+  async getBatchInfo(batchID) {
+    const url = `${this.baseUrl}/ocr/batch/info/${batchID}`;
+    const response = await this.get(url);
+    validateResponse(response);
+    const res = await response.json();
+    return res;
+  }
+  /**
+   * Get the batch jobs results as array.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @returns {Promise<BatchResultJob[]>} A promise with the batch jobs results.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchResult("ID");
+   * console.log(batch);
+   * // Output: [
+   * //           {
+   * //             "client_data": {},
+   * //             "created_at": "2022-06-22T20:58:09Z",
+   * //             "job_ksuid": "2AwrSd7bxEMbPrQ5jZHGDzQ4qL3",
+   * //             "result": {
+   * //               "Time": "7.45",
+   * //               "Document": [
+   * //                 {
+   * //                   "Page": 1,
+   * //                   "Data": {
+   * //                     "DocumentType": {
+   * //                       "conf": 99,
+   * //                       "value": "CNH"
+   * //                     }
+   * //                   }
+   * //                 }
+   * //               ]
+   * //             },
+   * //             "service": "idtypification",
+   * //             "status": "done",
+   * //             "filename": "123.jpg"
+   * //           }
+   * //         ]
+   */
+  async getBatchResult(batchID) {
+    const params = {
+      return: RETURN_REQUEST
+    };
+    const response = await this.getBatchResultBase(batchID, params);
+    const res = await response.json();
+    return res;
+  }
+  /**
+   * Generate url to download a file containing the batch jobs results.
+   * @param {string} batchID - The id of the batch, given on batch creation.
+   * @param {Record<string, string>} params - The query parameters based on UltraOCR Docs.
+   * @returns {Promise<BatchResultStorageResponse>} A promise with url to download result file.
+   * @throws {InvalidStatusCodeError} If request fail.
+   * @example
+   * const batch = await client.getBatchResultStorage("ID");
+   * console.log(batch);
+   * // Output: {
+   * //           "exp": "60000",
+   * //           "url": "https://presignedurldemo.s3.eu-west-2.amazonaws.com/image.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJJWZ7B6WCRGMKFGQ%2F20180210%2Feu-west-2%2Fs3%2Faws4_request&X-Amz-Date=20180210T171315Z&X-Amz-Expires=1800&X-Amz-Signature=12b74b0788aa036bc7c3d03b3f20c61f1f91cc9ad8873e3314255dc479a25351&X-Amz-SignedHeaders=host"
+   * //         }
+   */
+  async getBatchResultStorage(batchID, params = {}) {
+    params.return = RETURN_STORAGE;
+    const response = await this.getBatchResultBase(batchID, params);
+    const res = await response.json();
+    return res;
   }
 };
 // Annotate the CommonJS export names for ESM import in node:
